@@ -14,27 +14,53 @@ use AppBundle\Entity\BlogPost;
 
 class BlogController extends FOSRestController
 {
-    private function mail($post) {
+    private function mail($post, $actionMsg) {
         $message = \Swift_Message::newInstance()
             ->setSubject('hello')
             ->setFrom('lupo@xs4all.nl')
             ->setTo("lupo@xs4all.nl")
-            ->setBody($this->renderView('Emails/mail.html.twig',array('post'=>$post)),'text/html');
+            ->setBody($this->renderView('Emails/mail.html.twig',array('post'=>$post, 'actionMsg'=>$actionMsg)),'text/html');
 
         $this->get('mailer')->send($message);
     }
 
     /**
-     * @Rest\Get("/blogposts/{order}/{page}/{size}" , defaults={"order" = 1, "page"=0 , "size"=0 })
+     *
+     * Get blogposts (with all possible options in one controller)
+     * order: [1|0]       -> [newest first|oldest first]
+     * state  [-1|0|1]    -> [unpublished|All|published]
+     * page   [0,1.2....] -> pagenumber (starts at page 0) ((page)size is required when using this option)
+     * size   [1,2,3...]  -> number of articles per page
+     *
+     * @Rest\Get("/blogposts/{order}/{state}/{page}/{size}" , defaults={"order" = 1, "state"=0, "page"=0 , "size"=0 })
      */
-    public function getPaginatedAction($order, $page, $size)
+    public function getPaginatedAction($order, $state, $page, $size)
     {
         $order?$order='ASC':$order='DESC';
+        $order = ['dateCreated' => $order];
+
+        if ($state == 0)
+        {
+            // published and non published
+            $filter = [];
+        }
+        elseif ($state == 1)
+        {
+            // only published
+            $filter = ['status' => 1];
+        }
+        elseif ($state == -1)
+        {
+            // only non published
+            $filter = ['status' => 0];
+        }
 
         $limit = null;
         $offset = null;
-
-        if ($page == 0)
+        if ($size == 0) {
+            // no size implies no pagination
+        }
+        elseif ($page == 0)
         {
             $limit = $size;
         }
@@ -47,8 +73,8 @@ class BlogController extends FOSRestController
 
         $restresult = $this->getDoctrine()->getRepository('AppBundle:BlogPost')->findBy
         (
-            array(),
-            array('dateCreated' => $order),
+            $filter,
+            $order,
             $limit,
             $offset
         );
@@ -56,7 +82,6 @@ class BlogController extends FOSRestController
             return new View("no posts found", Response::HTTP_NOT_FOUND);
         }
         return $restresult;
-
     }
 
     /**
@@ -105,7 +130,7 @@ class BlogController extends FOSRestController
         $em->persist($data);
         $em->flush();
 
-        $this->mail($post);
+        $this->mail($post, "POST blogpost");
 
         return new View("Post Added Successfully", Response::HTTP_OK);
     }
@@ -124,25 +149,37 @@ class BlogController extends FOSRestController
         $sn = $this->getDoctrine()->getManager();
         $blogPost = $this->getDoctrine()->getRepository('AppBundle:BlogPost')->find($id);
         if (empty($blogPost)) {
-            return new View("post not found", Response::HTTP_NOT_FOUND);
+            $msg = "post not found";
+            $res = Response::HTTP_NOT_FOUND;
+            //return new View(, Response::HTTP_NOT_FOUND);
         }
         elseif(!empty($post) && !empty($status)){
             $blogPost->setPost($post);
             $blogPost->setStatus($status);
             $sn->flush();
-            return new View("Post Updated Successfully", Response::HTTP_OK);
+            $msg = "Post Updated Successfully";
+            $res = Response::HTTP_OK;
+            //return new View("Post Updated Successfully", Response::HTTP_OK);
         }
         elseif(empty($post) && !empty($status)){
             $blogPost->setStatus($status);
             $sn->flush();
-            return new View("Published Status Updated Successfully", Response::HTTP_OK);
+            $msg = "Published Status Updated Successfully";
+            $res = Response::HTTP_OK;
+            //return new View("Published Status Updated Successfully", Response::HTTP_OK);
         }
         elseif(!empty($post) && empty($status)){
             $blogPost->setPost($post);
             $sn->flush();
-            return new View("Post Updated Successfully", Response::HTTP_OK);
+            $msg = "Post Updated Successfully";
+            $res = Response::HTTP_OK;
+            // return new View("Post Updated Successfully", Response::HTTP_OK);
         }
         else return new View("Either Post or Status should be changed $request .. ", Response::HTTP_NOT_ACCEPTABLE);
+
+        if ($res==Response::HTTP_OK) {$this->mail($post, "PUT blogpost: $id");}
+
+        return new View($msg, $res);
     }
 
     /**
@@ -160,6 +197,8 @@ class BlogController extends FOSRestController
             $sn->remove($blogPost);
             $sn->flush();
         }
+
+        $this->mail($blogPost->getPost(), "DELETE blogpost $id");
         return new View("deleted successfully", Response::HTTP_OK);
     }
 

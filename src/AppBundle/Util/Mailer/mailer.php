@@ -9,37 +9,17 @@ namespace AppBundle\Util\Mailer;
 
 class mailer{
 
-    var $mailer;
+    //toDo use this one instead of the mailer in the blogController
 
-    function __construct() {
-        //$this->mailer = new \Swift_Mailer(\Swift_Transport::);
-    }
-
-    public function sendIt() {
-
-        $message = (new \Swift_Message('Hello Email'))
+    private function mail($post) {
+        $message = \Swift_Message::newInstance()
+            ->setSubject('hello')
             ->setFrom('lupo@xs4all.nl')
-            ->setTo('lupo@xs4all.nl')
-            ->setBody(
-                $this->renderView(
-                // app/Resources/views/Emails/registration.html.twig
-                    'Emails/mail.html.twig'
-                ),
-                'text/html'
-            )
-            /*
-             * If you also want to include a plaintext version of the message
-            ->addPart(
-                $this->renderView(
-                    'Emails/registration.txt.twig',
-                    array('name' => $name)
-                ),
-                'text/plain'
-            )
-            */
-        ;
+            ->setTo("lupo@xs4all.nl")
+            ->setBody($this->renderView('Emails/mail.html.twig',array('post'=>$post)),'text/html');
 
-        $this->mailer->send($message);
-
+        $this->get('mailer')->send($message);
     }
+
+
 }
