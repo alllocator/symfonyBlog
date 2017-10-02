@@ -17,9 +17,11 @@ class HelloWorldController extends FOSRestController
 
     /**
      * @param $amount : how many lines should I count
+     *
      * @param $helloCount : prints $hello on all multipliers of $helloCount
      * @param $worldCount : prints $world on all mulitipliers of $worldCount
      *          Additionally print HELLO WORLD on all multiplipiers of BOTH $helloCount AND $worldCount
+     *
      * E.g. 20,3,5 => 1,2,HELLO,4,WORLD,6,7,8,HELLO,WORLD,11,HELLO,13,14,HELLO WORLD,16,17,HELLO,19,WORLD
      * @param $hello : prints $hello on all multipliers of $helloCount
      * @param $world : prints $world on all mulitipliers of $worldCount

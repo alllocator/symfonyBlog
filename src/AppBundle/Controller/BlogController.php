@@ -14,6 +14,7 @@ use AppBundle\Entity\BlogPost;
 
 class BlogController extends FOSRestController
 {
+    // toDo: move this mail to Util\Mailer\mailer
     private function mail($post, $actionMsg) {
         $message = \Swift_Message::newInstance()
             ->setSubject('hello')
@@ -64,7 +65,7 @@ class BlogController extends FOSRestController
         {
             $limit = $size;
         }
-        elseif ($page>0)
+        elseif ($page > 0)
         {
             $offset = $page * $size;
             $limit = $size;
@@ -148,6 +149,7 @@ class BlogController extends FOSRestController
 
         $sn = $this->getDoctrine()->getManager();
         $blogPost = $this->getDoctrine()->getRepository('AppBundle:BlogPost')->find($id);
+
         if (empty($blogPost)) {
             $msg = "post not found";
             $res = Response::HTTP_NOT_FOUND;
