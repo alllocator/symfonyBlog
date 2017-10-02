@@ -3,17 +3,24 @@
 namespace Test\AppBundle\Controller;
 
 use AppBundle\Controller;
-use PHPUnit\Framework\TestCase;
+use AppBundle\Controller\BlogController;
+//use PHPUnit\Framework\TestCase;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
-class BlogControllerTest
-
-// toDo update phpunit on windows to start
+class BlogControllerTest extends WebTestCase
 
 {
-    function getPaginatedActionTest($order, $page, $size)
+    function testgetPaginatedAction()
     {
-        $blogController = new BlogController();
-        $this->assertEquals(42, 42);
+        $client = static::createClient();
+
+        $client->request(
+            'GET', '/blogposts',
+            array(), /* request params */
+            array(), /* files */
+            array('X-Requested-With' => "XMLHttpRequest"));
+
+        $this->assertEquals(200, $client->getResponse()->getStatusCode());
     }
 }
 
