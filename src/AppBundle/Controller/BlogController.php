@@ -53,7 +53,8 @@ class BlogController extends FOSRestController
 
         $limit = null;
         $offset = null;
-        if ($size == 0) {
+        if ($size == 0)
+        {
             // no size implies no pagination
         }
         elseif ($page == 0)
@@ -150,7 +151,8 @@ class BlogController extends FOSRestController
             $res = Response::HTTP_NOT_FOUND;
             //return new View(, Response::HTTP_NOT_FOUND);
         }
-        elseif(!empty($post) && !empty($status)){
+        elseif(!empty($post) && !empty($status))
+        {
             $blogPost->setPost($post);
             $blogPost->setStatus($status);
             $sn->flush();
@@ -158,14 +160,16 @@ class BlogController extends FOSRestController
             $res = Response::HTTP_OK;
             //return new View("Post Updated Successfully", Response::HTTP_OK);
         }
-        elseif(empty($post) && !empty($status)){
+        elseif(empty($post) && !empty($status))
+        {
             $blogPost->setStatus($status);
             $sn->flush();
             $msg = "Published Status Updated Successfully";
             $res = Response::HTTP_OK;
             //return new View("Published Status Updated Successfully", Response::HTTP_OK);
         }
-        elseif(!empty($post) && empty($status)){
+        elseif(!empty($post) && empty($status))
+        {
             $blogPost->setPost($post);
             $sn->flush();
             $msg = "Post Updated Successfully";
@@ -174,7 +178,10 @@ class BlogController extends FOSRestController
         }
         else return new View("Either Post or Status should be changed $request .. ", Response::HTTP_NOT_ACCEPTABLE);
 
-        if ($res==Response::HTTP_OK) {$this->mail($post, "PUT blogpost: $id");}
+        if ($res==Response::HTTP_OK)
+        {
+            $this->mail($post, "PUT blogpost: $id");
+        }
 
         return new View($msg, $res);
     }
@@ -187,10 +194,12 @@ class BlogController extends FOSRestController
 
         $sn = $this->getDoctrine()->getManager();
         $blogPost = $this->getDoctrine()->getRepository('AppBundle:BlogPost')->find($id);
-        if (empty($blogPost)) {
+        if (empty($blogPost))
+        {
             return new View("Post not found", Response::HTTP_NOT_FOUND);
         }
-        else {
+        else
+        {
             $sn->remove($blogPost);
             $sn->flush();
         }

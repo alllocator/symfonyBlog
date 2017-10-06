@@ -1,18 +1,17 @@
 <?php
 namespace AppBundle\Service;
 
-
-
-
 class MMailer
 {
-
-
     private $mailer;
+    private $adminEmail;
+    private $templating;
 
-    public function __construct(\Swift_Mailer $mailer)
+    public function __construct(\Swift_Mailer $mailer, $templating, $adminEmail)
     {
         $this->mailer = $mailer;
+        $this->templating = $templating;
+        $this->adminEmail = $adminEmail;
     }
 
 
@@ -20,10 +19,9 @@ class MMailer
 
          $message = \Swift_Message::newInstance()
             ->setSubject('hello')
-            ->setFrom('lupo@xs4all.nl')
-            ->setTo("lupo@xs4all.nl")
-            ->addPart($post . $msg);
-        //->setBody($this->templating->render('Emails/mail.html.twig',array('post'=>$post)),'text/html');
+            ->setFrom($this->adminEmail)
+            ->setTo($this->adminEmail)
+            ->setBody($this->templating->render('Emails/mail.html.twig',array('post'=>$post, 'actionMsg' => $post)),'text/html');
 
         $this->mailer->send($message);
     }

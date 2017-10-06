@@ -34,11 +34,14 @@ services:
     #     arguments:
     #         $someArgument: 'some_value'
 
-
-    #AppBundle\Service\MMailer:
-    #    class: AppBundle\Service\MMailer
-    #    public: true
-
     AppBundle\Service\:
         resource: '../../src/AppBundle/Service'
         public: true
+
+    AppBundle\Service\MMailer:
+        class: AppBundle\Service\MMailer
+        arguments:
+                    $adminEmail: '%admin_email%'
+                    $templating: '@templating'
+        public: true
+
