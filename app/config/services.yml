@@ -33,3 +33,12 @@ services:
     # AppBundle\Service\ExampleService:
     #     arguments:
     #         $someArgument: 'some_value'
+
+
+    #AppBundle\Service\MMailer:
+    #    class: AppBundle\Service\MMailer
+    #    public: true
+
+    AppBundle\Service\:
+        resource: '../../src/AppBundle/Service'
+        public: true

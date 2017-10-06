@@ -10,19 +10,14 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use FOS\RestBundle\View\View;
 use AppBundle\Entity\BlogPost;
-//use AppBundle\Util\Mailer\mailer;
+use AppBundle\Service\MMailer;
 
 class BlogController extends FOSRestController
 {
-    // toDo: move this mail to Util\Mailer\mailer
-    private function mail($post, $actionMsg) {
-        $message = \Swift_Message::newInstance()
-            ->setSubject('hello')
-            ->setFrom('lupo@xs4all.nl')
-            ->setTo("lupo@xs4all.nl")
-            ->setBody($this->renderView('Emails/mail.html.twig',array('post'=>$post, 'actionMsg'=>$actionMsg)),'text/html');
-
-        $this->get('mailer')->send($message);
+    public function mail($post, $actionMsg)
+    {
+        $mailer = $this->get(MMailer::class);
+        $mailer->mail($post, $actionMsg);
     }
 
     /**
