@@ -2,6 +2,7 @@
 
 namespace AppBundle\Controller;
 
+use AppBundle\Entity\Tags;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use FOS\RestBundle\Controller\Annotations as Rest;
@@ -28,7 +29,7 @@ class BlogController extends FOSRestController
      * page   [0,1.2....] -> pagenumber (starts at page 0) ((page)size is required when using this option)
      * size   [1,2,3...]  -> number of articles per page
      *
-     * @Rest\Get("/blogposts/{order}/{state}/{page}/{size}" , defaults={"order" = 1, "state"=0, "page"=0 , "size"=0 })
+     * @Rest\Get("/blogposts/{order}/{state}/{page}/{size}" , defaults={"order" = 1, "state"=0, "page"=0 , "size"=0} )
      */
     public function getPaginatedAction($order, $state, $page, $size)
     {
@@ -75,7 +76,9 @@ class BlogController extends FOSRestController
             $limit,
             $offset
         );
-        if ($restresult === null) {
+
+        if ($restresult === null)
+        {
             return new View("no posts found", Response::HTTP_NOT_FOUND);
         }
         return $restresult;
@@ -110,12 +113,6 @@ class BlogController extends FOSRestController
         // new blog, set initial timestamp
         $data->setDateCreated(new \DateTime("now"));
 
-        $blogTags = $request->get('blogtags');
-        if(!empty($blogTags))
-        {
-            $data->setBlogTags($blogTags);
-        }
-
         $publishedStatus = $request->get('status');
         if (!empty($publishedStatus)) {
            $data->setStatus($publishedStatus);
@@ -135,7 +132,7 @@ class BlogController extends FOSRestController
     /**
      * @Rest\Put("/blogpost/{id}")
      */
-    public function updateAction($id,Request $request)
+    public function updateAction($id, Request $request)
     {
         // possibly an issue with the $request doesn't hold the values
         // when using form-data in postmaster it fails
@@ -149,7 +146,6 @@ class BlogController extends FOSRestController
         if (empty($blogPost)) {
             $msg = "post not found";
             $res = Response::HTTP_NOT_FOUND;
-            //return new View(, Response::HTTP_NOT_FOUND);
         }
         elseif(!empty($post) && !empty($status))
         {
@@ -158,7 +154,6 @@ class BlogController extends FOSRestController
             $sn->flush();
             $msg = "Post Updated Successfully";
             $res = Response::HTTP_OK;
-            //return new View("Post Updated Successfully", Response::HTTP_OK);
         }
         elseif(empty($post) && !empty($status))
         {
@@ -166,7 +161,6 @@ class BlogController extends FOSRestController
             $sn->flush();
             $msg = "Published Status Updated Successfully";
             $res = Response::HTTP_OK;
-            //return new View("Published Status Updated Successfully", Response::HTTP_OK);
         }
         elseif(!empty($post) && empty($status))
         {
@@ -174,7 +168,6 @@ class BlogController extends FOSRestController
             $sn->flush();
             $msg = "Post Updated Successfully";
             $res = Response::HTTP_OK;
-            // return new View("Post Updated Successfully", Response::HTTP_OK);
         }
         else return new View("Either Post or Status should be changed $request .. ", Response::HTTP_NOT_ACCEPTABLE);
 
@@ -184,6 +177,41 @@ class BlogController extends FOSRestController
         }
 
         return new View($msg, $res);
+    }
+
+    /**
+     * @Rest\Put("/addtag/{id}/{newTag}")
+     */
+    public function addTagAction($id,$newTag)
+    {
+        $sn = $this->getDoctrine()->getManager();
+        $blogPost = $this->getDoctrine()->getRepository('AppBundle:BlogPost')->find($id);
+
+        $tag = new Tags();
+        $tag->setTag($newTag);
+        $sn->persist($tag);
+
+        $tag->addBlogPost($blogPost);
+        $blogPost->addTag($tag);
+
+        $sn->flush();
+    }
+
+    /**
+     *
+     *
+     * @Rest\Get("/searchTagged/{tags}",
+     *          requirements={"tags": "[a-zA-Z0-9\/]+"}
+     *     )
+     */
+    public function searchTagged($tags) {
+        $seperateTags = explode('/', $tags);
+        $restResult = $this->getDoctrine()->getRepository('AppBundle:Tags')->findby(
+            ['tag' => $seperateTags[0]]
+        );
+
+        return $restResult;
+
     }
 
     /**
@@ -206,6 +234,22 @@ class BlogController extends FOSRestController
 
         $this->mail($blogPost->getPost(), "DELETE blogpost $id");
         return new View("deleted successfully", Response::HTTP_OK);
+    }
+    /**
+     *
+     *
+     * @Rest\Get("/blogpostsTags/{tags}",
+     *          requirements={"tags": "[a-zA-Z0-9\/]+"}
+     *     )
+     *
+     * ToDo: pass tags as json
+     */
+    public function getByTagsAction($tags, Request $request)
+    {
+        $seperateTags = explode('/', $tags);
+        $blogPost = $this->getDoctrine()->getRepository('AppBundle:BlogPost')->getAllByTags($seperateTags);
+        return new View($blogPost, Response::HTTP_OK);
+
     }
 
 }

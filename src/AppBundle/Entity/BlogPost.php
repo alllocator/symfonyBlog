@@ -2,6 +2,7 @@
 
 namespace AppBundle\Entity;
 
+use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
@@ -9,9 +10,29 @@ use Doctrine\ORM\Mapping as ORM;
  *
  * @ORM\Table(name="blog_post")
  * @ORM\Entity(repositoryClass="AppBundle\Repository\BlogPostRepository")
+ *
  */
-class BlogPost
+
+class BlogPost extends EntityRepository
 {
+
+    /**
+     * @ORM\ManyToMany(targetEntity="Tags", inversedBy="blogposts")
+     * @ORM\JoinTable(name="blogs_tags")
+     */
+    private $tags;
+
+
+    public function __construct() {
+        $this->tag = new \Doctrine\Common\Collections\ArrayCollection();
+    }
+
+    public function addTag(Tags $tag)
+    {
+        $tag->addBlogPost($this);
+        $this->tags[] = $tag;
+    }
+
     /**
      * @var int
      *
@@ -46,14 +67,6 @@ class BlogPost
      * @ORM\Column(name="dateUpdated", type="datetime", nullable=true)
      */
     private $dateUpdated;
-
-    /**
-     * @var array
-     *
-     * @ORM\Column(name="blogTags", type="json_array", nullable=true)
-     */
-    private $blogTags;
-
 
     /**
      * Get id
@@ -160,30 +173,5 @@ class BlogPost
     {
         return $this->dateUpdated;
     }
-
-    /**
-     * Set blogTags
-     *
-     * @param array $blogTags
-     *
-     * @return BlogPost
-     */
-    public function setBlogTags($blogTags)
-    {
-        $this->blogTags = $blogTags;
-
-        return $this;
-    }
-
-    /**
-     * Get blogTags
-     *
-     * @return array
-     */
-    public function getBlogTags()
-    {
-        return $this->blogTags;
-    }
-
 
 }

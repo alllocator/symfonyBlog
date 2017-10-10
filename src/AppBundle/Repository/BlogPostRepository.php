@@ -10,4 +10,18 @@ namespace AppBundle\Repository;
  */
 class BlogPostRepository extends \Doctrine\ORM\EntityRepository
 {
+
+    /*
+     *
+     public function getAllByTags(Array $tags) {
+
+        return $this->getEntityManager()->
+        createQuery('
+              SELECT bp from AppBundle:BlogPost bp where 
+              bp.blogTags like :tags
+            ')->setParameter('tags', "%$tags[0]%")
+            ->getResult();
+    }
+    */
+
 }
