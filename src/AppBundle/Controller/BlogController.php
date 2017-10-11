@@ -219,15 +219,8 @@ class BlogController extends FOSRestController
         $sn->flush();
     }
 
-    /**
-     * @Rest\Get("/searchTagged/{tags}",
-     *          requirements={"tags": "[a-zA-Z0-9\/]+"}
-     *     )
-     */
-    public function searchTagged($tags)
-    {
-        $seperateTags = explode('/', $tags);
 
+    private function searchOnTags($seperateTags) {
         $results = $this->getDoctrine()
             ->getRepository('AppBundle:Tags')
             ->findby(
@@ -235,17 +228,58 @@ class BlogController extends FOSRestController
             )
         ;
 
+        $restResult = [];
         foreach ($results as $result)
         {
             $id   = $result->getBlogposts()[0]->getId();
             $post = $result->getBlogposts()[0]->getPost();
+
+            // all matching tags for this post
             $tag  = $result->getTag();
+
+            // all tags for this post
+            $allTags = $result->getBlogposts()[0]->getTags();
+            $a = [];
+            foreach ($allTags as $aTag) {
+               $a[$aTag->getId()] = $aTag->getTag();
+            }
 
             $restResult[$id]['id'] = $id;
             $restResult[$id]['post'] = $post;
             $restResult[$id]['tags'][] = $tag;
+            $restResult[$id]['alltags'] = $a;
         }
-        return new View($restResult, Response::HTTP_OK);
+
+        return $restResult;
+    }
+
+    /**
+     * @Rest\Get("/searchTagged/{tags}",
+     *          requirements={"tags": "[a-zA-Z0-9\/]+"}
+     *     )
+     *  E.g. searchTagged/data2/mytag
+     */
+    public function searchTagged($tags)
+    {
+        $seperateTags = explode('/', $tags);
+        $results = $this->searchOnTags($seperateTags);
+        return new View($results, Response::HTTP_OK);
+    }
+
+    /**
+     * @Rest\Get("/searchTryOut/{tags}")
+     *
+     * E.g.
+     * FF: /searchTryOut/{"tags":["data","tag2'"]}
+     * postman: /searchTryOut/%7B%22tags%22:[%22data%22,%22tag2'%22]%7D
+     */
+    public function searchTryOut($tags)
+    {
+        $seperateTags = json_decode($tags, true);
+        $seperateTags = array_values($seperateTags)[0];
+
+        $results = $this->searchOnTags($seperateTags);
+        return new View($results, Response::HTTP_OK);
     }
 
     /**
