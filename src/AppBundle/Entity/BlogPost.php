@@ -24,13 +24,17 @@ class BlogPost extends EntityRepository
 
 
     public function __construct() {
-        $this->tag = new \Doctrine\Common\Collections\ArrayCollection();
+        $this->tags = new \Doctrine\Common\Collections\ArrayCollection();
     }
 
     public function addTag(Tags $tag)
     {
         $tag->addBlogPost($this);
         $this->tags[] = $tag;
+    }
+
+    public function getTags() {
+        return $this->tags;
     }
 
     /**

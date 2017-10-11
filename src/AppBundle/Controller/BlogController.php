@@ -21,21 +21,15 @@ class BlogController extends FOSRestController
         $mailer->mail($post, $actionMsg);
     }
 
-    /**
-     *
-     * Get blogposts (with all possible options in one controller)
-     * order: [1|0]       -> [newest first|oldest first]
-     * state  [-1|0|1]    -> [unpublished|All|published]
-     * page   [0,1.2....] -> pagenumber (starts at page 0) ((page)size is required when using this option)
-     * size   [1,2,3...]  -> number of articles per page
-     *
-     * @Rest\Get("/blogposts/{order}/{state}/{page}/{size}" , defaults={"order" = 1, "state"=0, "page"=0 , "size"=0} )
-     */
-    public function getPaginatedAction($order, $state, $page, $size)
+    private function getOrderedBy($order)
     {
         $order?$order='ASC':$order='DESC';
         $order = ['dateCreated' => $order];
+        return $order;
+    }
 
+    private function getStateFilter($state)
+    {
         if ($state == 0)
         {
             // published and non published
@@ -51,7 +45,11 @@ class BlogController extends FOSRestController
             // only non published
             $filter = ['status' => 0];
         }
+        return $filter;
+    }
 
+    private function getPagination($size, $page)
+    {
         $limit = null;
         $offset = null;
         if ($size == 0)
@@ -68,6 +66,30 @@ class BlogController extends FOSRestController
             $limit = $size;
         }
 
+        $res['limit']  = $limit;
+        $res['offset'] = $offset;
+
+        return $res;
+    }
+
+    /**
+     *
+     * Get blogposts (with all possible options in one controller)
+     * order: [1|0]       -> [newest first|oldest first]
+     * state  [-1|0|1]    -> [unpublished|All|published]
+     * page   [0,1.2....] -> pagenumber (starts at page 0) ((page)size is required when using this option)
+     * size   [1,2,3...]  -> number of articles per page
+     *
+     * @Rest\Get("/blogposts/{order}/{state}/{page}/{size}" , defaults={"order" = 1, "state"=0, "page"=0 , "size"=0} )
+     */
+    public function getPaginatedAction($order, $state, $page, $size)
+    {
+        $order = $this->getOrderedBy($order);
+        $filter = $this->getStateFilter($state);
+
+        $paginator = $this->getPagination($size, $page);
+        $limit  = $paginator['limit'];
+        $offset = $paginator['offset'];
 
         $restresult = $this->getDoctrine()->getRepository('AppBundle:BlogPost')->findBy
         (
@@ -198,20 +220,32 @@ class BlogController extends FOSRestController
     }
 
     /**
-     *
-     *
      * @Rest\Get("/searchTagged/{tags}",
      *          requirements={"tags": "[a-zA-Z0-9\/]+"}
      *     )
      */
-    public function searchTagged($tags) {
+    public function searchTagged($tags)
+    {
         $seperateTags = explode('/', $tags);
-        $restResult = $this->getDoctrine()->getRepository('AppBundle:Tags')->findby(
-            ['tag' => $seperateTags[0]]
-        );
 
-        return $restResult;
+        $results = $this->getDoctrine()
+            ->getRepository('AppBundle:Tags')
+            ->findby(
+                ['tag' => $seperateTags]
+            )
+        ;
 
+        foreach ($results as $result)
+        {
+            $id   = $result->getBlogposts()[0]->getId();
+            $post = $result->getBlogposts()[0]->getPost();
+            $tag  = $result->getTag();
+
+            $restResult[$id]['id'] = $id;
+            $restResult[$id]['post'] = $post;
+            $restResult[$id]['tags'][] = $tag;
+        }
+        return new View($restResult, Response::HTTP_OK);
     }
 
     /**
@@ -219,7 +253,6 @@ class BlogController extends FOSRestController
      */
     public function deleteAction($id)
     {
-
         $sn = $this->getDoctrine()->getManager();
         $blogPost = $this->getDoctrine()->getRepository('AppBundle:BlogPost')->find($id);
         if (empty($blogPost))
