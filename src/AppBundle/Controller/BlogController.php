@@ -206,7 +206,7 @@ class BlogController extends FOSRestController
     public function searchTagged($tags)
     {
         $seperateTags = explode('/', $tags);
-        
+
         $results = $this->searchOnTags($seperateTags);
         return new View($results, Response::HTTP_OK);
     }
