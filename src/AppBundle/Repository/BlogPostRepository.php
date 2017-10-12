@@ -11,17 +11,117 @@ namespace AppBundle\Repository;
 class BlogPostRepository extends \Doctrine\ORM\EntityRepository
 {
 
-    /*
-     *
-     public function getAllByTags(Array $tags) {
 
-        return $this->getEntityManager()->
-        createQuery('
-              SELECT bp from AppBundle:BlogPost bp where 
-              bp.blogTags like :tags
-            ')->setParameter('tags', "%$tags[0]%")
-            ->getResult();
+    private function getOrderedBy($order)
+    {
+        $order?$order='ASC':$order='DESC';
+        $order = ['dateCreated' => $order];
+        return $order;
     }
-    */
+
+    private function getStateFilter($state)
+    {
+        if ($state == 0)
+        {
+            // published and non published
+            $filter = [];
+        }
+        elseif ($state == 1)
+        {
+            // only published
+            $filter = ['status' => 1];
+        }
+        elseif ($state == -1)
+        {
+            // only non published
+            $filter = ['status' => 0];
+        }
+        return $filter;
+    }
+
+    private function getPagination($size, $page)
+    {
+        $limit = null;
+        $offset = null;
+        if ($size == 0)
+        {
+            // no size implies no pagination
+        }
+        elseif ($page == 0)
+        {
+            $limit = $size;
+        }
+        elseif ($page > 0)
+        {
+            $offset = $page * $size;
+            $limit = $size;
+        }
+
+        $res['limit']  = $limit;
+        $res['offset'] = $offset;
+
+        return $res;
+    }
+
+    // $order, $state, $page, $size
+    private function searchBlogpostsOnTags($tags , $order = null, $filter = [], $limit = null, $offset = null) {
+
+
+        foreach ($tags as $tag)
+        {
+            $posts[] = $tag->getBlogposts()[0]->getId();
+        }
+
+        $combiFilter = ['id' => $posts];
+
+        if ($filter) {
+            $combiFilter =  $filter + $combiFilter;
+        }
+
+        $results = $this
+            ->findBy(
+                $combiFilter,
+                $order,
+                $limit,
+                $offset
+            )
+        ;
+
+        return $results;
+    }
+
+    public function searchTagsOptions($tags, $order, $state, $page, $size)
+    {
+        $order = $this->getOrderedBy($order);
+        $filter = $this->getStateFilter($state);
+
+        $paginator = $this->getPagination($size, $page);
+        $limit  = $paginator['limit'];
+        $offset = $paginator['offset'];
+
+        $results = $this->searchBlogpostsOnTags($tags, $order, $filter,  $limit, $offset);
+
+        return $results ;
+    }
+
+    public function getPaginated($order, $state, $page, $size)
+    {
+        $order = $this->getOrderedBy($order);
+        $filter = $this->getStateFilter($state);
+
+        $paginator = $this->getPagination($size, $page);
+        $limit  = $paginator['limit'];
+        $offset = $paginator['offset'];
+
+        $restresult = $this->findBy
+        (
+            $filter,
+            $order,
+            $limit,
+            $offset
+        );
+
+        return $restresult;
+    }
 
 }

@@ -21,57 +21,6 @@ class BlogController extends FOSRestController
         $mailer->mail($post, $actionMsg);
     }
 
-    private function getOrderedBy($order)
-    {
-        $order?$order='ASC':$order='DESC';
-        $order = ['dateCreated' => $order];
-        return $order;
-    }
-
-    private function getStateFilter($state)
-    {
-        if ($state == 0)
-        {
-            // published and non published
-            $filter = [];
-        }
-        elseif ($state == 1)
-        {
-            // only published
-            $filter = ['status' => 1];
-        }
-        elseif ($state == -1)
-        {
-            // only non published
-            $filter = ['status' => 0];
-        }
-        return $filter;
-    }
-
-    private function getPagination($size, $page)
-    {
-        $limit = null;
-        $offset = null;
-        if ($size == 0)
-        {
-            // no size implies no pagination
-        }
-        elseif ($page == 0)
-        {
-            $limit = $size;
-        }
-        elseif ($page > 0)
-        {
-            $offset = $page * $size;
-            $limit = $size;
-        }
-
-        $res['limit']  = $limit;
-        $res['offset'] = $offset;
-
-        return $res;
-    }
-
     /**
      *
      * Get blogposts (with all possible options in one controller)
@@ -84,26 +33,16 @@ class BlogController extends FOSRestController
      */
     public function getPaginatedAction($order, $state, $page, $size)
     {
-        $order = $this->getOrderedBy($order);
-        $filter = $this->getStateFilter($state);
 
-        $paginator = $this->getPagination($size, $page);
-        $limit  = $paginator['limit'];
-        $offset = $paginator['offset'];
+        $result = $this->getDoctrine()->getRepository('AppBundle:BlogPost')->getPaginated($order, $state, $page, $size);
+        return $result;
 
-        $restresult = $this->getDoctrine()->getRepository('AppBundle:BlogPost')->findBy
-        (
-            $filter,
-            $order,
-            $limit,
-            $offset
-        );
-
-        if ($restresult === null)
+        if ($result === null)
         {
             return new View("no posts found", Response::HTTP_NOT_FOUND);
         }
-        return $restresult;
+        return new View($result, Response::HTTP_OK);
+
     }
 
     /**
@@ -219,44 +158,77 @@ class BlogController extends FOSRestController
         $sn->flush();
     }
 
-    private function searchBlogpostsOnTags($seperateTags , $filter = [], $order = null, $limit = null, $offset = null) {
+    /**
+     * @Rest\Get("/searchTagsOptions/{tags}/{order}/{state}/{page}/{size}", defaults={"order" = 1, "state"=0, "page"=0 , "size"=0})
+     *
+     * Get pagination, sort and status filter on tag search
+     * Eg:
+     * http://localhost/blogs/blog/web/app_dev.php/searchTagsOptions/{"tags":["data","tag2'"]}/0/1/1/2
+     * Will give 2nd page (0 is the first page) of search results with a page size of 2 items
+     * the search will yield all active posts in an ASCENDING order
+     */
+    public function searchTagsOptions($tags, $order, $state, $page, $size)
+    {
+
+        $seperateTags = json_decode($tags, true);
+        $seperateTags = array_values($seperateTags)[0];
 
         $seperateTags = ['tag' => $seperateTags];
 
-
-        $results = $this->getDoctrine()
+        $matchingTags = $this->getDoctrine()
             ->getRepository('AppBundle:Tags')
             ->findby(
                 $seperateTags
             )
         ;
-        // $number = $em->find('MyProject\Domain\Phonenumber', 1234);
-        // $user = $em->getRepository('MyProject\Domain\User')->findOneBy(array('phone' => $number->getId()));
-        foreach ($results as $tag)
-        {
-            $posts[] = $tag->getBlogposts()[0]->getId();
-        }
-
-
 
         $results = $this->getDoctrine()
-            ->getRepository('AppBundle:BlogPost')
-            ->findby(
-                ['id' => $posts],
-                $order,
-                $limit,
-                $offset
-            )
-        ;
-
-        return $results;
-
+            ->getRepository('AppBundle:BlogPost')->searchTagsOptions($matchingTags, $order, $state, $page, $size);
+        return new View($results, Response::HTTP_OK);
     }
 
-    private function searchOnTagsOk($seperateTags) {
 
+    /**
+     * @Rest\Get("/searchTagged/{tags}",
+     *          requirements={"tags": "[a-zA-Z0-9\/]+"}
+     *     )
+     *  E.g. searchTagged/data/data2
+     *
+     * returns the specific outputformat:
+     * {"1":
+     *  {   "id":1,
+     *      "post":"first",
+     *      "matchingtag":
+     *          ["data","data2"],
+     *      "alltags":
+     *          {"1":"mytag","2":"data","3":"data2"}}
+     */
+    public function searchTagged($tags)
+    {
+        $seperateTags = explode('/', $tags);
+        
+        $results = $this->searchOnTags($seperateTags);
+        return new View($results, Response::HTTP_OK);
+    }
+
+    /**
+     * @Rest\Get("/searchTaggedByJson/{tags})
+     * E.g.
+     * FF: /searchTryOut/{"tags":["data","tag2'"]}
+     * postman: /searchTryOut/%7B%22tags%22:[%22data%22,%22tag2'%22]%7D
+     * See Rest\Get("/searchTagged/{tags}" for output format
+     */
+    public function searchTaggedByJson($tags, $order, $state, $page, $size)
+    {
+        $seperateTags = json_decode($tags, true);
+        $seperateTags = array_values($seperateTags)[0];
+
+        $results = $this->searchOnTags($seperateTags);
+        return new View($results, Response::HTTP_OK);
+    }
+
+    private function searchOnTags($seperateTags) {
         $filter = ['tag' => $seperateTags];
-
         $results = $this->getDoctrine()
             ->getRepository('AppBundle:Tags')
             ->findby(
@@ -278,105 +250,12 @@ class BlogController extends FOSRestController
             }
             $restResult[$id]['id'] = $id;
             $restResult[$id]['post'] = $post;
-            $restResult[$id]['tags'][] = $tag;
+            $restResult[$id]['matchingtags'][] = $tag;
             $restResult[$id]['alltags'] = $a;
         }
         return $restResult;
     }
 
-    private function searchOnTags($seperateTags, $filter = [], $order = null, $limit = null, $offset = null) {
-
-        $full_filter = ['tag' => $seperateTags];
-        $full_filter = array_merge($full_filter, $filter);
-
-        $results = $this->getDoctrine()
-            ->getRepository('AppBundle:Tags')
-            ->findby(
-                $full_filter,
-                $order,
-                $limit,
-                $offset
-            )
-        ;
-
-        $restResult = [];
-        foreach ($results as $result)
-        {
-            $id   = $result->getBlogposts()[0]->getId();
-            $post = $result->getBlogposts()[0]->getPost();
-
-            // all matching tags for this post
-            $tag  = $result->getTag();
-
-            // all tags for this post
-            $allTags = $result->getBlogposts()[0]->getTags();
-            $a = [];
-            foreach ($allTags as $aTag) {
-               $a[$aTag->getId()] = $aTag->getTag();
-            }
-
-            $restResult[$id]['id'] = $id;
-            $restResult[$id]['post'] = $post;
-            $restResult[$id]['tags'][] = $tag;
-            $restResult[$id]['alltags'] = $a;
-        }
-
-        return $restResult;
-    }
-
-    /**
-     * @Rest\Get("/searchTagged/{tags}",
-     *          requirements={"tags": "[a-zA-Z0-9\/]+"}
-     *     )
-     *  E.g. searchTagged/data2/mytag
-     */
-    public function searchTagged($tags)
-    {
-        $seperateTags = explode('/', $tags);
-        $results = $this->searchOnTags($seperateTags);
-        return new View($results, Response::HTTP_OK);
-    }
-
-    /**
-     * @Rest\Get("/searchTryOut/{tags}/{order}/{state}/{page}/{size}", defaults={"order" = 1, "state"=0, "page"=0 , "size"=0})
-     * E.g.
-     * FF: /searchTryOut/{"tags":["data","tag2'"]}
-     * postman: /searchTryOut/%7B%22tags%22:[%22data%22,%22tag2'%22]%7D
-     */
-    public function searchTryOut($tags, $order, $state, $page, $size)
-    {
-
-        $seperateTags = json_decode($tags, true);
-        $seperateTags = array_values($seperateTags)[0];
-        $results = $this->searchOnTags($seperateTags);
-
-        return new View($results, Response::HTTP_OK);
-    }
-
-    /**
-     * @Rest\Get("/searchTry2/{tags}/{order}/{state}/{page}/{size}", defaults={"order" = 1, "state"=0, "page"=0 , "size"=0})
-     *
-     * Get pagination, sort and status filter on tag search
-     * Eg:
-     * http://localhost/blogs/blog/web/app_dev.php/searchTry2/%7B%22tags%22:[%22data%22,%22data2%22,%22tag2'%22]%7D/1/0/2/2
-     * Will give 2nd page of search results with a page size of 2 items  
-     *
-     */
-    public function searchTry2($tags, $order, $state, $page, $size)
-    {
-        $seperateTags = json_decode($tags, true);
-        $seperateTags = array_values($seperateTags)[0];
-
-        $order = $this->getOrderedBy($order);
-        $filter = $this->getStateFilter($state);
-
-        $paginator = $this->getPagination($size, $page);
-        $limit  = $paginator['limit'];
-        $offset = $paginator['offset'];
-
-        $results = $this->searchBlogpostsOnTags($seperateTags, $filter, $order, $limit, $offset);
-        return new View($results, Response::HTTP_OK);
-    }
 
     /**
      * @Rest\Delete("/blogpost/{id}")
@@ -397,22 +276,6 @@ class BlogController extends FOSRestController
 
         $this->mail($blogPost->getPost(), "DELETE blogpost $id");
         return new View("deleted successfully", Response::HTTP_OK);
-    }
-    /**
-     *
-     *
-     * @Rest\Get("/blogpostsTags/{tags}",
-     *          requirements={"tags": "[a-zA-Z0-9\/]+"}
-     *     )
-     *
-     * ToDo: pass tags as json
-     */
-    public function getByTagsAction($tags, Request $request)
-    {
-        $seperateTags = explode('/', $tags);
-        $blogPost = $this->getDoctrine()->getRepository('AppBundle:BlogPost')->getAllByTags($seperateTags);
-        return new View($blogPost, Response::HTTP_OK);
-
     }
 
 }
